@@ -15,6 +15,7 @@ int main() {
     PrivateCustomClass private_class;
     glm::vec3 glm_vec{3,1,4};
 
+
     // std::ofstream fs("log_test.txt", std::ios_base::out);
 
     // Logger::redirect(fs);

@@ -27,7 +27,7 @@ enum class LogLevel : std::uint8_t {
 
 
 namespace internal {
-    class Logger {
+    class Logger : public Singleton<Logger> {
     public:
 
 
@@ -90,4 +90,17 @@ namespace internal {
         friend class Singleton<Logger>;
         Logger() {};
     };
+}
+
+namespace Logger {
+
+    template<typename T>
+    void log(const LogLevel &level, const T &t, const std::experimental::source_location &source = std::experimental::source_location::current()) {
+        internal::Logger::instance().log(level, source.file_name(), source.line(), source.function_name(), t);
+    }
+
+    template<typename T>
+    void log(const LogLevel &level, const T &t, const std::function<std::string(const T &t)> &stringify, const std::experimental::source_location &source = std::experimental::source_location::current()) {
+        internal::Logger::instance().log(level, source.file_name(), source.line(), source.function_name(), t, stringify);
+    }
 }
