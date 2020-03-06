@@ -25,82 +25,60 @@ enum class LogLevel : std::uint8_t {
     CRITICAL = 5
 };
 
+template<typename T>
+class Record {
+public:
 
-namespace internal {
-    class Logger : public Singleton<Logger> {
-    public:
+    Record(const std::string_view &tag, const T &t) : tag(tag), t(t) {}
+    friend std::ostream &operator<<(std::ostream &os, const Record &record) {
+        os << "{" << record.tag << "} " << record.t;
+        return os;
+    }
+protected:
+    const std::string_view tag;
+    const T &t; 
+};
 
+class Logger { 
+public:
 
-        template <typename T>
-        void log(
-            const LogLevel level,
-            const std::string_view &filename,
-            const int line,
-            const std::string_view &function_caller,
-            const T &t
-        ) {
-            if (permission(level)) return;
-            stream << "["; log_level(level); stream << "] ";
-            stream << filename << ":" << line << "-" << function_caller << ": ";
-            stream << t;
-            stream << std::endl;
-        }
+    Logger() = default;
 
-        template <typename T>
-        void log(
-            const LogLevel level,
-            const std::string_view &filename,
-            const int line,
-            const std::string_view &function_caller,
-            const T &t,
-            const std::function<std::string(const T &t)> &stringify
-        ) {
-            if (permission(level)) return;
-            stream << "["; log_level(level); stream << "] ";
-            stream << filename << ":" << line << "-" << function_caller << ": ";
-
-            stream << stringify(t);
-            stream << std::endl;
-        }
-
-        void redirect(std::ostream &os) { stream.rdbuf(os.rdbuf()); }
-        void set_permission(const LogLevel &level) { log_permission = static_cast<std::uint8_t>(level); }
-
-
-    protected:
-        void log_level(LogLevel level) {
-            switch(level) {
-                case LogLevel::CRITICAL:    stream << "CRITICAL"; break;
-                case LogLevel::ERROR:       stream << "ERROR"; break;
-                case LogLevel::WARNING:     stream << "WARNING"; break;
-                case LogLevel::NOTICE:      stream << "NOTICE"; break;
-                case LogLevel::INFORMATION: stream << "INFORMATION"; break;
-                case LogLevel::DEBUG:       stream << "DEBUG"; break;
-            }
-        }
-        
-        bool permission(const LogLevel &level) {
-            return log_permission > static_cast<std::uint8_t>(level);
-        }
-
-        std::ostream stream{std::cout.rdbuf()};
-        std::uint8_t log_permission = 0;
-
-        //Logger(const std::ostream &stream) : stream(stream.rdbuf()) {}
-        friend class Singleton<Logger>;
-        Logger() {};
-    };
-}
-
-namespace Logger {
-
-    template<typename T>
-    void log(const LogLevel &level, const T &t, const std::experimental::source_location &source = std::experimental::source_location::current()) {
-        internal::Logger::instance().log(level, source.file_name(), source.line(), source.function_name(), t);
+    void redirect(std::ostream &os) { 
+        stream.rdbuf(os.rdbuf()); 
     }
 
-    template<typename T>
-    void log(const LogLevel &level, const T &t, const std::function<std::string(const T &t)> &stringify, const std::experimental::source_location &source = std::experimental::source_location::current()) {
-        internal::Logger::instance().log(level, source.file_name(), source.line(), source.function_name(), t, stringify);
+    std::ostream &operator() (
+        const LogLevel &level, 
+        const std::experimental::source_location source = std::experimental::source_location::current()
+    ) {
+        if (permission(level)) return stream;
+        stream << "["; log_level(level); stream << "] ";
+        stream << source.file_name() << ":" << source.line() << "-" << source.function_name() << ": ";
+        return stream;
     }
-}
+
+    void set_permission(const LogLevel &level) { 
+        log_permission = static_cast<std::uint8_t>(level); 
+    }
+
+
+protected:
+    void log_level(LogLevel level) {
+        switch(level) {
+            case LogLevel::CRITICAL:    stream << "CRITICAL"; break;
+            case LogLevel::ERROR:       stream << "ERROR"; break;
+            case LogLevel::WARNING:     stream << "WARNING"; break;
+            case LogLevel::NOTICE:      stream << "NOTICE"; break;
+            case LogLevel::INFORMATION: stream << "INFORMATION"; break;
+            case LogLevel::DEBUG:       stream << "DEBUG"; break;
+        }
+    }
+    
+    bool permission(const LogLevel &level) {
+        return log_permission > static_cast<std::uint8_t>(level);
+    }
+
+    std::ostream stream{std::cout.rdbuf()};
+    std::uint8_t log_permission = 0;
+};
